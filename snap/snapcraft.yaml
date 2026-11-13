@@ -1,0 +1,110 @@
+name: betterleaks
+base: core26
+version: '1.10.1'
+title: Betterleaks
+icon: snap/gui/betterleaks.png
+summary: Find leaked secrets in Git, files, code hosts and S3 buckets
+description: |
+  Betterleaks detects passwords, API keys, tokens and other secrets in the
+  history of Git repositories, in directories and files, in text read from
+  standard input, and in GitHub, GitLab, Hugging Face and S3 sources. It can
+  check findings against live APIs, reads Gitleaks configuration files, and
+  writes reports as JSON, CSV, JUnit, SARIF or a custom template.
+
+  **Examples**
+
+     betterleaks git -v ~/projects/my-project
+     betterleaks dir -v ~/projects/my-project
+     cat notes.txt | betterleaks stdin
+     betterleaks github https://github.com/my-org --validation
+
+  **File access**
+
+  Betterleaks can scan repositories and files in your home directory. To
+  also scan USB drives and other removable media (/media, /mnt), run:
+
+     sudo snap connect betterleaks:removable-media
+
+  The snap includes Git for scanning history and cloning over HTTPS.
+license: MIT
+grade: stable
+confinement: strict
+website: https://betterleaks.com
+source-code:
+  - https://github.com/betterleaks/betterleaks
+  - https://github.com/sidalit/betterleaks-snap
+issues:
+  - https://github.com/betterleaks/betterleaks/issues
+  - https://github.com/sidalit/betterleaks-snap/issues
+contact: https://github.com/sidalit/betterleaks-snap/issues
+
+platforms:
+  amd64:
+  arm64:
+
+apps:
+  betterleaks:
+    command: bin/betterleaks
+    completer: share/bash-completion/completions/betterleaks
+    environment:
+      GIT_CONFIG_NOSYSTEM: '1'
+      GIT_EXEC_PATH: $SNAP/usr/lib/git-core
+      XDG_CONFIG_HOME: $SNAP_USER_DATA/.config
+    plugs:
+      - home
+      - network
+      - removable-media
+
+parts:
+  betterleaks:
+    plugin: nil
+    source: https://github.com/betterleaks/betterleaks.git
+    source-tag: v$SNAPCRAFT_PROJECT_VERSION
+    source-depth: 1
+    build-snaps:
+      - go/1.27/stable
+    build-environment:
+      - CGO_ENABLED: '0'
+      - GOTOOLCHAIN: local
+    override-build: |
+      # Betterleaks cannot compare a git-<commit> version with a config's betterleaksMinVersion.
+      case "$SNAPCRAFT_PROJECT_VERSION" in
+        git-*) version_flag= ;;
+        *) version_flag="-X=github.com/betterleaks/betterleaks/version.Version=$SNAPCRAFT_PROJECT_VERSION" ;;
+      esac
+      go build -p "$CRAFT_PARALLEL_BUILD_COUNT" -trimpath \
+        -ldflags "-s -w $version_flag" -o "$CRAFT_PART_INSTALL/bin/betterleaks" .
+      completion="$CRAFT_PART_INSTALL/share/bash-completion/completions/betterleaks"
+      install -Dm644 "$CRAFT_PROJECT_DIR/snap/local/completion-compat.bash" "$completion"
+      "$CRAFT_PART_INSTALL/bin/betterleaks" completion bash >> "$completion"
+      install -Dm644 LICENSE -t "$CRAFT_PART_INSTALL/share/doc/betterleaks"
+
+  git:
+    plugin: nil
+    build-attributes: [enable-patchelf]
+    stage-slices:
+      - git_bins
+      - git_http-support
+    stage:
+      - usr/bin/git
+      - usr/lib/git-core/git
+      - usr/lib/git-core/git-remote-http
+      - usr/lib/git-core/git-remote-https
+      - usr/lib/*/libcurl-gnutls.so.*
+      - usr/lib/*/liblber.so.*
+      - usr/lib/*/libldap.so.*
+      - usr/lib/*/libnghttp2.so.*
+      - usr/lib/*/libpsl.so.*
+      - usr/lib/*/librtmp.so.*
+      - usr/lib/*/libsasl2.so.*
+      - usr/lib/*/sasl2
+      - usr/lib/*/libssh2.so.*
+      - usr/share/doc/git/copyright
+      - usr/share/doc/libcurl3t64-gnutls/copyright
+      - usr/share/doc/libldap2/copyright
+      - usr/share/doc/libnghttp2-14/copyright
+      - usr/share/doc/libpsl5t64/copyright
+      - usr/share/doc/librtmp1/copyright
+      - usr/share/doc/libsasl2-2/copyright
+      - usr/share/doc/libsasl2-modules-db/copyright
+      - usr/share/doc/libssh2-1t64/copyright
