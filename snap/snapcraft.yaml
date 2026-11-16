@@ -76,7 +76,10 @@ parts:
         -ldflags "-s -w $version_flag" -o "$CRAFT_PART_INSTALL/bin/betterleaks" .
       completion="$CRAFT_PART_INSTALL/share/bash-completion/completions/betterleaks"
       install -Dm644 "$CRAFT_PROJECT_DIR/snap/local/completion-compat.bash" "$completion"
-      "$CRAFT_PART_INSTALL/bin/betterleaks" completion bash >> "$completion"
+      # Betterleaks 2 (upstream HEAD) has no shell completion.
+      if script=$("$CRAFT_PART_INSTALL/bin/betterleaks" completion bash); then
+        printf '%s\n' "$script" >> "$completion"
+      fi
       install -Dm644 LICENSE -t "$CRAFT_PART_INSTALL/share/doc/betterleaks"
 
   git:
